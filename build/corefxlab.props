@@ -1,0 +1,9 @@
+<Project>
+  <ItemGroup>
+    <CoreFXLabCompile Include="$(MSBuildThisFileDirectory)../corefxlab/src/System.IO.Pipelines/**/*.cs" />
+    <CoreFXLabCompile Include="$(MSBuildThisFileDirectory)../corefxlab/src/System.Binary/**/*.cs" />
+    <CoreFXLabCompile Include="$(MSBuildThisFileDirectory)../corefxlab/src/System.Buffers.Primitives/**/*.cs" />
+    <CoreFXLabCompile Include="$(MSBuildThisFileDirectory)../corefxlab/src/System.Collections.Sequences/**/*.cs" />
+    <CoreFXLabCompile Include="$(MSBuildThisFileDirectory)../corefxlab/src/System.Text.Encodings.Web.Utf8/UrlEncoder.cs" />
+  </ItemGroup>
+</Project>
