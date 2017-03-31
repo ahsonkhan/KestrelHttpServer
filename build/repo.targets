@@ -1,6 +1,10 @@
 <Project>
   <Import Project="$(MSBuildThisFileDirectory)\corefxlab.props" />
 
+  <PropertyGroup>
+    <PrepareDependsOn>$(PrepareDependsOn);Internalize</PrepareDependsOn>
+  </PropertyGroup>
+
   <Target Name="CodeGen">
     <Exec Command="dotnet run" WorkingDirectory="$(MSBuildThisFileDirectory)..\tools\CodeGenerator\" />
   </Target>

@@ -2,7 +2,9 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq.Expressions;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -10,7 +12,12 @@ namespace Internalizer
 {
     public class Program
     {
+        private const string MicrosoftAspnetcoreServerKestrelInternal = "Microsoft.AspNetCore.Server.Kestrel.Internal";
         private static UTF8Encoding _utf8Encoding = new UTF8Encoding(false);
+        private static readonly HashSet<string> preservedNamespaces = new HashSet<string>()
+        {
+            "System.Runtime"
+        };
 
         public static int Main(string[] args)
         {
@@ -27,10 +34,21 @@ namespace Internalizer
         public static void Run(string csFileList)
         {
             var files = File.ReadAllLines(csFileList);
+            var namespaces = new HashSet<string>();
             foreach (var file in files)
             {
                 var contents = File.ReadAllText(file);
-                var newContents = Process(contents);
+                var newContents = ProcessNamespaces(contents, namespaces);
+                if (newContents != contents)
+                {
+                    File.WriteAllText(file, newContents, _utf8Encoding);
+                }
+            }
+
+            foreach (var file in files)
+            {
+                var contents = File.ReadAllText(file);
+                var newContents = ProcessUsings(contents, namespaces);
                 if (newContents != contents)
                 {
                     File.WriteAllText(file, newContents, _utf8Encoding);
@@ -38,10 +56,36 @@ namespace Internalizer
             }
         }
 
-        private static string Process(string contents)
+        private static string ProcessNamespaces(string contents, HashSet<string> namespaces)
         {
-            Regex r = new Regex("public((static|unsafe|partial|\\s)+(class|struct|interface|delegate))");
-            return r.Replace(contents, match => match.Groups[1].Value);
+            Regex r = new Regex("namespace\\s+([\\w.]+)");
+            return r.Replace(contents, match =>
+            {
+                var ns = match.Groups[1].Value;
+                namespaces.Add(ns);
+                return "namespace " + MicrosoftAspnetcoreServerKestrelInternal + "." + ns;
+            });
+        }
+
+        private static string ProcessUsings(string contents, HashSet<string> namespaces)
+        {
+            Regex r = new Regex("using\\s+([\\w.]+)\\s*;");
+            return r.Replace(contents, match =>
+            {
+
+                string result = match.Value;
+                var ns = match.Groups[1].Value;
+                if (namespaces.Contains(ns))
+                {
+                    result = "using Microsoft.AspNetCore.Server.Kestrel.Internal." + ns +";";
+                    if (preservedNamespaces.Contains(ns))
+                    {
+                        result += Environment.NewLine + match.Value;
+                    }
+                }
+                return result;
+
+            });
         }
     }
 }
