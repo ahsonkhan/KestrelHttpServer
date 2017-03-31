@@ -5,10 +5,10 @@
     <Exec Command="dotnet run" WorkingDirectory="$(MSBuildThisFileDirectory)..\tools\CodeGenerator\" />
   </Target>
   <Target Name="GitSubmoduleInit">
-    <Exec Command="git submodule init" WorkingDirectory="$(MSBuildThisFileDirectory)..\" />
-    <Exec Command="git reset --hard" WorkingDirectory="$(MSBuildThisFileDirectory)..\corefxlab" />
+    <Exec Command="git submodule update --init --recursive" WorkingDirectory="$(MSBuildThisFileDirectory)..\" />
+    <!--<Exec Command="git reset -hard" WorkingDirectory="$(MSBuildThisFileDirectory)..\corefxlab\" /> -->
   </Target>
-  <Target Name="Internalize" DependsOnTargets="GitSubmoduleInit">
+  <Target Name="Internalize" DependsOnTargets="GitSubmoduleInit;Restore">
         <PropertyGroup>
             <InternalizeTempFileName>$(MSBuildThisFileDirectory)..\.build\corefxlabfiles.txt</InternalizeTempFileName>
         </PropertyGroup>
