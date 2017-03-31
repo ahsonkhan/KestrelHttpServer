@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -16,8 +17,14 @@ namespace Internalizer
         private static UTF8Encoding _utf8Encoding = new UTF8Encoding(false);
         private static readonly HashSet<string> preservedNamespaces = new HashSet<string>()
         {
-            "System.Runtime"
+            "System",
+            "System.Runtime",
+            "System.Buffers"
         };
+
+        private static readonly string preservedNamespacesUsings =
+            string.Join(string.Empty,
+                preservedNamespaces.Select(ns => "using " + ns + ";" + Environment.NewLine));
 
         public static int Main(string[] args)
         {
@@ -63,14 +70,16 @@ namespace Internalizer
             {
                 var ns = match.Groups[1].Value;
                 namespaces.Add(ns);
-                return "namespace " + MicrosoftAspnetcoreServerKestrelInternal + "." + ns;
+                string result = "";
+                result += "namespace " + MicrosoftAspnetcoreServerKestrelInternal + "." + ns;
+                return result;
             });
         }
 
         private static string ProcessUsings(string contents, HashSet<string> namespaces)
         {
             Regex r = new Regex("using\\s+([\\w.]+)\\s*;");
-            return r.Replace(contents, match =>
+            return preservedNamespacesUsings + r.Replace(contents, match =>
             {
 
                 string result = match.Value;
@@ -78,13 +87,8 @@ namespace Internalizer
                 if (namespaces.Contains(ns))
                 {
                     result = "using Microsoft.AspNetCore.Server.Kestrel.Internal." + ns +";";
-                    if (preservedNamespaces.Contains(ns))
-                    {
-                        result += Environment.NewLine + match.Value;
-                    }
                 }
                 return result;
-
             });
         }
     }
