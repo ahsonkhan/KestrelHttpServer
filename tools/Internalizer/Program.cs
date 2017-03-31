@@ -44,7 +44,7 @@ using System.Buffers;
             {
                 var text = File.ReadAllText(file);
                 return new FileEntry(path: file, oldText : text, newText : text);
-            });
+            }).ToArray();
 
             foreach (var fileEntry in fileContents)
             {
