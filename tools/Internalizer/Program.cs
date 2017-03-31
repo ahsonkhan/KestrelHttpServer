@@ -14,17 +14,15 @@ namespace Internalizer
     public class Program
     {
         private const string MicrosoftAspnetcoreServerKestrelInternal = "Microsoft.AspNetCore.Server.Kestrel.Internal";
-        private static UTF8Encoding _utf8Encoding = new UTF8Encoding(false);
-        private static readonly HashSet<string> preservedNamespaces = new HashSet<string>()
-        {
-            "System",
-            "System.Runtime",
-            "System.Buffers"
-        };
+        private const string DefaultUsings = @"
+using System;
+using System.Runtime;
+using System.Buffers;
 
-        private static readonly string preservedNamespacesUsings =
-            string.Join(string.Empty,
-                preservedNamespaces.Select(ns => "using " + ns + ";" + Environment.NewLine));
+";
+        private static readonly UTF8Encoding _utf8Encoding = new UTF8Encoding(false);
+        private static readonly Regex _usingRegex = new Regex("using\\s+([\\w.]+)\\s*;", RegexOptions.Compiled);
+        private static readonly Regex _namespaceRegex = new Regex("namespace\\s+([\\w.]+)", RegexOptions.Compiled);
 
         public static int Main(string[] args)
         {
@@ -42,54 +40,62 @@ namespace Internalizer
         {
             var files = File.ReadAllLines(csFileList);
             var namespaces = new HashSet<string>();
-            foreach (var file in files)
+            var fileContents = files.Select(file =>
             {
-                var contents = File.ReadAllText(file);
-                var newContents = ProcessNamespaces(contents, namespaces);
-                if (newContents != contents)
-                {
-                    File.WriteAllText(file, newContents, _utf8Encoding);
-                }
+                var text = File.ReadAllText(file);
+                return new FileEntry(path: file, oldText : text, newText : text);
+            });
+
+            foreach (var fileEntry in fileContents)
+            {
+                fileEntry.NewText = ProcessNamespaces(fileEntry.NewText, namespaces);
             }
 
-            foreach (var file in files)
+            foreach (var fileEntry in fileContents)
             {
-                var contents = File.ReadAllText(file);
-                var newContents = ProcessUsings(contents, namespaces);
-                if (newContents != contents)
+                fileEntry.NewText = ProcessUsings(fileEntry.NewText, namespaces);
+                if (fileEntry.NewText != fileEntry.OldText)
                 {
-                    File.WriteAllText(file, newContents, _utf8Encoding);
+                    File.WriteAllText(fileEntry.Path, fileEntry.NewText, _utf8Encoding);
                 }
             }
         }
 
         private static string ProcessNamespaces(string contents, HashSet<string> namespaces)
         {
-            Regex r = new Regex("namespace\\s+([\\w.]+)");
-            return r.Replace(contents, match =>
+            return _namespaceRegex.Replace(contents, match =>
             {
                 var ns = match.Groups[1].Value;
                 namespaces.Add(ns);
-                string result = "";
-                result += "namespace " + MicrosoftAspnetcoreServerKestrelInternal + "." + ns;
-                return result;
+                return $"namespace {MicrosoftAspnetcoreServerKestrelInternal}.{ns}";
             });
         }
 
         private static string ProcessUsings(string contents, HashSet<string> namespaces)
         {
-            Regex r = new Regex("using\\s+([\\w.]+)\\s*;");
-            return preservedNamespacesUsings + r.Replace(contents, match =>
+            return DefaultUsings + _usingRegex.Replace(contents, match =>
             {
-
-                string result = match.Value;
                 var ns = match.Groups[1].Value;
                 if (namespaces.Contains(ns))
                 {
-                    result = "using Microsoft.AspNetCore.Server.Kestrel.Internal." + ns +";";
+                    return $"using {MicrosoftAspnetcoreServerKestrelInternal}.{ns};";
                 }
-                return result;
+                return match.Value;
             });
+        }
+    }
+
+    public class FileEntry
+    {
+        public string Path { get; set; }
+        public string OldText { get; set; }
+        public string NewText { get; set; }
+
+        public FileEntry(string path, string oldText, string newText)
+        {
+            Path = path;
+            OldText = oldText;
+            NewText = newText;
         }
     }
 }
